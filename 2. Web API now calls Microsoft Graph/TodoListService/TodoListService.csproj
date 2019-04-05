@@ -10,7 +10,15 @@
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.AzureAD.UI" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.Graph" Version="1.14.0" />
+    <PackageReference Include="Microsoft.Graph.Core" Version="1.14.1" />
     <PackageReference Include="Microsoft.Identity.Client" Version="2.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.Graph.Auth">
+      <HintPath>..\..\..\..\..\MSGraph\Repos\msgraph-sdk-dotnet-auth\src\Microsoft.Graph.Auth\bin\Debug\netstandard1.3\Microsoft.Graph.Auth.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

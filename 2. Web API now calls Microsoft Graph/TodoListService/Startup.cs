@@ -27,10 +27,10 @@ using Microsoft.AspNetCore.Authentication.AzureAD.UI;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
 
 namespace TodoListService
 {
@@ -43,24 +43,29 @@ namespace TodoListService
 
         public IConfiguration Configuration { get; }
 
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // Added to expose HttpContext to other services that need it.
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
             services.AddAuthentication(AzureADDefaults.JwtBearerAuthenticationScheme)
                 .AddAzureADBearer(options => Configuration.Bind("AzureAd", options));
 
             services
-              .AddTokenAcquisition()
+              .AddGraphAuthProvider(Configuration)
               .AddDistributedMemoryCache()
               .AddSession()
-              .AddSessionBasedTokenCache()
-              ;
+              .AddSessionBasedTokenCache();
 
             // Added
             services.Configure<JwtBearerOptions>(AzureADDefaults.JwtBearerAuthenticationScheme, options =>
             {
                 // This is an Azure AD v2.0 Web API
                 options.Authority += "/v2.0";
+
+                options.SaveToken = true;
 
                 // The valid audiences are both the Client ID (options.Audience) and api://{ClientID}
                 options.TokenValidationParameters.ValidAudiences = new string[] { options.Audience, $"api://{options.Audience}" };
@@ -75,19 +80,12 @@ namespace TodoListService
 
                 // If you want to debug, or just understand the JwtBearer events, uncomment the following line of code
                 // options.Events = JwtBearerMiddlewareDiagnostics.Subscribe(options.Events);
-
                 options.Events.OnTokenValidated = async context =>
                 {
-                    var tokenAcquisition = context.HttpContext.RequestServices.GetRequiredService<ITokenAcquisition>();
-                    var scopes = new string[] { "user.read" };
-                    context.Success();
-
-                    // Adds the token to the cache, and also handles the incremental consent and claim challenges
-                    tokenAcquisition.AddAccountToCacheFromJwt(context, scopes);
-                    await Task.FromResult(0);
                 };
             });
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -27,17 +27,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Client;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using TodoListService.Models;
+using Microsoft.Graph;
+using Microsoft.Graph.Auth;
 
 namespace TodoListService.Controllers
 {
@@ -45,14 +44,13 @@ namespace TodoListService.Controllers
     [Route("api/[controller]")]
     public class TodoListController : Controller
     {
-        public TodoListController(ITokenAcquisition tokenAcquisition)
-        {
-            _tokenAcquisition = tokenAcquisition;
-        }
-
-        readonly ITokenAcquisition _tokenAcquisition;
-
+        private readonly IAuthenticationProvider _authenticationProvider;
         static readonly ConcurrentBag<TodoItem> TodoStore = new ConcurrentBag<TodoItem>();
+
+        public TodoListController(IAuthenticationProvider authenticationProvider)
+        {
+            _authenticationProvider = authenticationProvider;
+        }
 
         // GET: api/values
         [HttpGet]
@@ -79,13 +77,13 @@ namespace TodoListService.Controllers
             }
             catch (MsalException ex)
             {
-                HttpContext.Response.ContentType = "text/plain";
+                HttpContext.Response.ContentType = System.Net.Mime.MediaTypeNames.Text.Plain;
                 HttpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-                await HttpContext.Response.WriteAsync("An authentication error occurred while acquiring a token for downstream API\n"+ex.ErrorCode + "\n"+ ex.Message);
+                await HttpContext.Response.WriteAsync("An authentication error occurred while acquiring a token for downstream API\n" + ex.ErrorCode + "\n" + ex.Message);
             }
             catch (Exception ex)
             {
-                HttpContext.Response.ContentType = "text/plain";
+                HttpContext.Response.ContentType = System.Net.Mime.MediaTypeNames.Text.Plain; ;
                 HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 await HttpContext.Response.WriteAsync("An error occurred while calling the downstream API\n" + ex.Message);
             }
@@ -95,38 +93,18 @@ namespace TodoListService.Controllers
 
         public async Task<string> CallGraphApiOnBehalfOfUser()
         {
-            string[] scopes = { "user.read" };
-
-            // we use MSAL.NET to get a token to call the API On Behalf Of the current user
             try
             {
-                string accessToken = await _tokenAcquisition.GetAccessTokenOnBehalfOfUser(HttpContext, scopes);
-                dynamic me = await CallGraphApiOnBehalfOfUser(accessToken);
-                return me.userPrincipalName;
-            }
-            catch (MsalUiRequiredException ex)
-            {
-                _tokenAcquisition.ReplyForbiddenWithWwwAuthenticateHeader(HttpContext, scopes, ex);
-                return string.Empty;
-            }
-        }
+                GraphServiceClient graphClient = new GraphServiceClient(_authenticationProvider);
 
-        private static async Task<dynamic> CallGraphApiOnBehalfOfUser(string accessToken)
-        {
-            //
-            // Call the Graph API and retrieve the user's profile.
-            //
-            HttpClient client = new HttpClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            HttpResponseMessage response = await client.GetAsync("https://graph.microsoft.com/v1.0/me");
-            string content = await response.Content.ReadAsStringAsync();
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-                dynamic me = JsonConvert.DeserializeObject(content);
-                return me;
+                string token = await AuthenticationHttpContextExtensions.GetTokenAsync(HttpContext, "access_token");
+                User me = await graphClient.Me.Request().WithUserAssertion(new UserAssertion(token)).GetAsync();
+                return me.UserPrincipalName;
             }
-
-            throw new Exception(content);
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
     }
 }
