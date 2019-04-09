@@ -47,7 +47,6 @@ namespace TodoListService
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Added to expose HttpContext to other services that need it.
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             services.AddAuthentication(AzureADDefaults.JwtBearerAuthenticationScheme)
@@ -57,7 +56,7 @@ namespace TodoListService
               .AddGraphAuthProvider(Configuration)
               .AddDistributedMemoryCache()
               .AddSession()
-              .AddSessionBasedTokenCache();
+              .AddSessionTokenCacheProvider();
 
             // Added
             services.Configure<JwtBearerOptions>(AzureADDefaults.JwtBearerAuthenticationScheme, options =>
@@ -65,6 +64,7 @@ namespace TodoListService
                 // This is an Azure AD v2.0 Web API
                 options.Authority += "/v2.0";
 
+                // Allows us to access the validated `access_token` in our controllers.
                 options.SaveToken = true;
 
                 // The valid audiences are both the Client ID (options.Audience) and api://{ClientID}

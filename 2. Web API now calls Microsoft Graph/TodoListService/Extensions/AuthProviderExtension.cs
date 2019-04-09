@@ -8,45 +8,30 @@ using Microsoft.Graph.Auth;
 namespace Microsoft.AspNetCore.Authentication
 {
     /// <summary>
-    /// Extension class enabling adding the TokenAcquisition service
+    /// Extension class enabling adding an authentication provider service.
     /// </summary>
     public static class AuthProviderExtension
     {
         /// <summary>
-        /// Add the token acquisition service.
+        /// Adds an authentication provider service for Microsoft Graph.
         /// </summary>
-        /// <param name="services">Service collection</param>
-        /// <returns>the service collection</returns>
-        /// <example>
-        /// This method is typically called from the Startup.ConfigureServices(IServiceCollection services)
-        /// Note that the implementation of the token cache can be chosen separately.
-        /// 
-        /// <code>
-        /// // Token acquisition service and its cache implementation as a session cache
-        /// services.AddTokenAcquisition()
-        /// .AddDistributedMemoryCache()
-        /// .AddSession()
-        /// .AddSessionBasedTokenCache()
-        ///  ;
-        /// </code>
-        /// </example>
-
+        /// <param name="services">Service collection.</param>
+        /// <param name="configuration">Configuration.</param>
+        /// <returns>A service collection.</returns>
         public static IServiceCollection AddGraphAuthProvider(this IServiceCollection services, IConfiguration configuration)
         {
-            AzureADOptions _azureAdOptions = new AzureADOptions();
-            configuration.Bind("AzureAD", _azureAdOptions);
+            AzureADOptions azureAdOptions = new AzureADOptions();
+            configuration.Bind("AzureAD", azureAdOptions);
 
             string[] scopes = { "user.read" };
-            var currentUri = "https://localhost:44351/";
 
-            // Get configured token storage provider.
+            // Get a registered ITokenStorageProvider service.
             ITokenStorageProvider tokenCacheProvider = services.BuildServiceProvider().GetService<ITokenStorageProvider>();
 
-            var credential = new ClientCredential(_azureAdOptions.ClientSecret);
             // Create confidential client application.
-            IConfidentialClientApplication confidentialApp = OnBehalfOfProvider.CreateClientApplication(_azureAdOptions.ClientId, currentUri, credential, tokenCacheProvider);
+            IConfidentialClientApplication confidentialApp = OnBehalfOfProvider.CreateClientApplication(azureAdOptions.ClientId, azureAdOptions.CallbackPath, new ClientCredential(azureAdOptions.ClientSecret), tokenCacheProvider);
 
-            // Register OnBehalfOfProvider as an authentication provider.
+            // Register OnBehalfOfProvider as an IAuthenticationProvider service.
             services.AddSingleton<IAuthenticationProvider>(new OnBehalfOfProvider(confidentialApp, scopes));
 
             return services;

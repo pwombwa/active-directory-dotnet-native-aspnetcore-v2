@@ -95,10 +95,15 @@ namespace TodoListService.Controllers
         {
             try
             {
+                // Create a GraphServiceClient using the registered authentication provider service.
                 GraphServiceClient graphClient = new GraphServiceClient(_authenticationProvider);
 
-                string token = await AuthenticationHttpContextExtensions.GetTokenAsync(HttpContext, "access_token");
-                User me = await graphClient.Me.Request().WithUserAssertion(new UserAssertion(token)).GetAsync();
+                // Get validated service access token.
+                string validatedServiceToken = await AuthenticationHttpContextExtensions.GetTokenAsync(HttpContext, "access_token");
+
+                // Call graph passing the validated service access token as the UserAssertion.
+                User me = await graphClient.Me.Request().WithUserAssertion(new UserAssertion(validatedServiceToken)).GetAsync();
+
                 return me.UserPrincipalName;
             }
             catch (Exception ex)

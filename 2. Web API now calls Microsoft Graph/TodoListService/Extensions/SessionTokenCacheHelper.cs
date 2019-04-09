@@ -1,33 +1,30 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Auth;
-using Microsoft.Identity.Client;
-using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Authentication
 {
     /// <summary>
-    /// Extension class enabling adding the CookieBasedTokenCache implentation service
+    /// Extension class enabling adding the SessionTokenCacheProvider implentation service.
     /// </summary>
     public static class SessionBasedTokenCacheExtension
     {
         /// <summary>
-        /// Add the token acquisition service.
+        /// Add a session based token cahce provider service.
         /// </summary>
         /// <param name="services">Service collection</param>
         /// <returns>the service collection</returns>
-        public static IServiceCollection AddSessionBasedTokenCache(this IServiceCollection services)
+        public static IServiceCollection AddSessionTokenCacheProvider(this IServiceCollection services)
         {
-            // Token acquisition service
             services.AddSingleton<ITokenStorageProvider, SessionTokenCacheProvider>();
             return services;
         }
     }
 
     /// <summary>
-    /// Provides an implementation of <see cref="ITokenStorageProvider"/> for a cookie based token cache implementation
+    /// Provides an implementation of <see cref="ITokenStorageProvider"/> for a session based token cache implementation.
     /// </summary>
     public class SessionTokenCacheProvider : ITokenStorageProvider
     {
