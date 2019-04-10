@@ -53,7 +53,7 @@ namespace TodoListService
                 .AddAzureADBearer(options => Configuration.Bind("AzureAd", options));
 
             services
-              .AddGraphAuthProvider(Configuration)
+              .AddMicrosoftGraph(Configuration)
               .AddDistributedMemoryCache()
               .AddSession()
               .AddSessionTokenCacheProvider();

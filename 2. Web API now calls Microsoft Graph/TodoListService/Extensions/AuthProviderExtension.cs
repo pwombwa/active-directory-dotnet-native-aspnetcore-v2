@@ -18,21 +18,31 @@ namespace Microsoft.AspNetCore.Authentication
         /// <param name="services">Service collection.</param>
         /// <param name="configuration">Configuration.</param>
         /// <returns>A service collection.</returns>
-        public static IServiceCollection AddGraphAuthProvider(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddMicrosoftGraph(this IServiceCollection services, IConfiguration configuration)
         {
             AzureADOptions azureAdOptions = new AzureADOptions();
             configuration.Bind("AzureAD", azureAdOptions);
 
             string[] scopes = { "user.read" };
 
-            // Get a registered ITokenStorageProvider service.
+            // Get registered ITokenStorageProvider service.
             ITokenStorageProvider tokenCacheProvider = services.BuildServiceProvider().GetService<ITokenStorageProvider>();
 
-            // Create confidential client application.
-            IConfidentialClientApplication confidentialApp = OnBehalfOfProvider.CreateClientApplication(azureAdOptions.ClientId, azureAdOptions.CallbackPath, new ClientCredential(azureAdOptions.ClientSecret), tokenCacheProvider);
+            // Create a confidential client application.
+            IConfidentialClientApplication confidentialApp = OnBehalfOfProvider.CreateClientApplication(
+                azureAdOptions.ClientId,
+                azureAdOptions.CallbackPath,
+                new ClientCredential(azureAdOptions.ClientSecret),
+                tokenCacheProvider);
 
-            // Register OnBehalfOfProvider as an IAuthenticationProvider service.
-            services.AddSingleton<IAuthenticationProvider>(new OnBehalfOfProvider(confidentialApp, scopes));
+            // Configure an OnBehalfOfProvider.
+            OnBehalfOfProvider authProvider = new OnBehalfOfProvider(confidentialApp, scopes);
+
+            // Register OnBehalfOfProvider as a service.
+            services.AddSingleton<IAuthenticationProvider>(authProvider);
+
+            // Register IGraphServiceClient as a service.
+            services.AddSingleton<IGraphServiceClient>(new GraphServiceClient(authProvider));
 
             return services;
         }

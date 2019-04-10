@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
 #define ENABLE_OBO
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +35,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TodoListService.Models;
 using Microsoft.Graph;
-using Microsoft.Graph.Auth;
+using TodoListService.Extensions;
 
 namespace TodoListService.Controllers
 {
@@ -44,12 +43,12 @@ namespace TodoListService.Controllers
     [Route("api/[controller]")]
     public class TodoListController : Controller
     {
-        private readonly IAuthenticationProvider _authenticationProvider;
+        private readonly IGraphServiceClient _graphServiceClient;
         static readonly ConcurrentBag<TodoItem> TodoStore = new ConcurrentBag<TodoItem>();
 
-        public TodoListController(IAuthenticationProvider authenticationProvider)
+        public TodoListController(IGraphServiceClient graphServiceClient)
         {
-            _authenticationProvider = authenticationProvider;
+            _graphServiceClient = graphServiceClient;
         }
 
         // GET: api/values
@@ -71,7 +70,10 @@ namespace TodoListService.Controllers
             // call to the downstream API (Microsoft Graph) has completed.
             try
             {
-                ownerName = CallGraphApiOnBehalfOfUser().GetAwaiter().GetResult();
+                // Call graph to get a user.
+                User me = _graphServiceClient.Me.Request().WithUser(HttpContext).GetAsync().GetAwaiter().GetResult();
+                ownerName = me.UserPrincipalName;
+
                 string title = string.IsNullOrWhiteSpace(ownerName) ? todo.Title : $"{todo.Title} ({ownerName})";
                 TodoStore.Add(new TodoItem { Owner = owner, Title = title });
             }
@@ -88,28 +90,6 @@ namespace TodoListService.Controllers
                 await HttpContext.Response.WriteAsync("An error occurred while calling the downstream API\n" + ex.Message);
             }
 #endif
-
-        }
-
-        public async Task<string> CallGraphApiOnBehalfOfUser()
-        {
-            try
-            {
-                // Create a GraphServiceClient using the registered authentication provider service.
-                GraphServiceClient graphClient = new GraphServiceClient(_authenticationProvider);
-
-                // Get validated service access token.
-                string validatedServiceToken = await AuthenticationHttpContextExtensions.GetTokenAsync(HttpContext, "access_token");
-
-                // Call graph passing the validated service access token as the UserAssertion.
-                User me = await graphClient.Me.Request().WithUserAssertion(new UserAssertion(validatedServiceToken)).GetAsync();
-
-                return me.UserPrincipalName;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
         }
     }
 }
