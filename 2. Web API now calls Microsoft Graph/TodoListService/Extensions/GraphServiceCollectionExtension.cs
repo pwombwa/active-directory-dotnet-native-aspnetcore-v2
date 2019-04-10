@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Authentication
     /// <summary>
     /// Extension class enabling adding an authentication provider service.
     /// </summary>
-    public static class AuthProviderExtension
+    public static class GraphServiceCollectionExtension
     {
         /// <summary>
         /// Adds an authentication provider service for Microsoft Graph.
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Authentication
             services.AddSingleton<IAuthenticationProvider>(authProvider);
 
             // Register IGraphServiceClient as a service.
-            services.AddSingleton<IGraphServiceClient>(new GraphServiceClient(authProvider));
+            services.AddSingleton<IGraphServiceClient, GraphServiceClient>();
 
             return services;
         }
